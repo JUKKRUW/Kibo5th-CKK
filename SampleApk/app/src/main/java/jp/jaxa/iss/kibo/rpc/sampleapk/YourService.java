@@ -35,40 +35,35 @@ public class YourService extends KiboRpcService {
         api.startMission();
 
         // Move to a point.
-        Point point = new Point(10.9d, -9.92284d, 5.195d);
-        Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
-
+        moveTo(10.804, -9.806, 5.2372, 0f, 0f, -0.707f, 0.707f);
         // Get a camera image.
         Mat image = api.getMatNavCam();
-
-        /* *********************************************************************** */
-        /* Write your code to recognize type and number of items in the each area! */
-        /* *********************************************************************** */
-
-        // When you recognize items, let’s set the type and number.
+        api.saveMatImage(image, "image1");
         api.setAreaInfo(1, "item_name", 1);
-
-        /* **************************************************** */
-        /* Let's move to the each area and recognize the items. */
-        /* **************************************************** */
-
-        // When you move to the front of the astronaut, report the rounding completion.
+        //1
+        moveTo(10.67, -9.45, 4.77, -0.5f, 0.5f, 0.5f, 0.5f);
+        moveTo(10.925, -8.875, 4.534, -0.5f, 0.5f, 0.5f, 0.5f);
+        Mat image1 = api.getMatNavCam();
+        api.saveMatImage(image1, "image2");
+        api.setAreaInfo(2, "item_name", 1);
+        //2
+        moveTo(10.804, -7.925, 4.534, -0.5f, 0.5f, 0.5f, 0.5f);
+        Mat image2 = api.getMatNavCam();
+        api.saveMatImage(image2, "image3");
+        api.setAreaInfo(3, "item_name", 1);
+        //3
+        moveTo(10.804, -7.925, 4.867, 0f, 0f, 1f, 0f);
+        Mat image3 = api.getMatNavCam();
+        api.saveMatImage(image3, "image4");
+        api.setAreaInfo(4, "item_name", 1);
+        //4
+        moveTo(11.15, -6.422, 4.967, 0f, 0f, -0.707f, 0.707f);
+        Mat image4 = api.getMatNavCam();
+        api.saveMatImage(image4, "image5");
         api.reportRoundingCompletion();
-
-        /* ********************************************************** */
-        /* Write your code to recognize which item the astronaut has. */
-        /* ********************************************************** */
-
-        // Let's notify the astronaut when you recognize it.
         api.notifyRecognitionItem();
-
-        /* ******************************************************************************************************* */
-        /* Write your code to move Astrobee to the location of the target item (what the astronaut is looking for) */
-        /* ******************************************************************************************************* */
-
-        // Take a snapshot of the target item.
         api.takeTargetItemSnapshot();
+    }
     }
 
     @Override
@@ -81,7 +76,7 @@ public class YourService extends KiboRpcService {
         // write your plan 3 here.
     }
 
-    private void MoveTo(double px, double py, double pz,
+    private void moveTo(double px, double py, double pz,
                         float qx, float qy, float qz, float qw){
 
         Point point = new Point(px, py, pz);
