@@ -1,6 +1,5 @@
 package jp.jaxa.iss.kibo.rpc.sampleapk;
 
-import android.nfc.Tag;
 import android.util.Log;
 
 import gov.nasa.arc.astrobee.Result;
@@ -74,7 +73,7 @@ public class YourService extends KiboRpcService {
 
     @Override
     protected void runPlan2(){
-       // write your plan 2 here.
+        // write your plan 2 here.
     }
 
     @Override
@@ -92,11 +91,11 @@ public class YourService extends KiboRpcService {
         //Check the Astrobee arrive location or not
         int loop_count = 0, loop_max =3;
         do {
-                result = api.moveTo(point, quaternion, true);
-                loop_count++;
-                Log.i(TAG, "Trying move to " + px + "," + py + "," + pz + "|" + qx + "," + qy + "," + qz + "," + qw);
+            result = api.moveTo(point, quaternion, true);
+            loop_count++;
+            Log.i(TAG, "Trying move to " + px + "," + py + "," + pz + "|" + qx + "," + qy + "," + qz + "," + qw);
 
-                if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
+            if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
         } while(!result.hasSucceeded() && loop_count < loop_max);
         Log.i(TAG,"MOVING ENDED");
     }
@@ -106,8 +105,8 @@ public class YourService extends KiboRpcService {
         Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);//New DistCoeffs
         //set Matrix of Cam & coefficient
         float[] Navcam = {523.105750f, 0.0f, 635.434258f,
-                          0.0f, 534.765913f, 500.335102f,
-                          0.0f, 0.0f, 1.0f};
+                0.0f, 534.765913f, 500.335102f,
+                0.0f, 0.0f, 1.0f};
         float[] coefficients = {-0.164787f, 0.020375f, -0.001572f, -0.000369f, 0.0f};
         CamMatrix.put(0, 0,Navcam);
         DistCoeffs.put(0, 0, coefficients);
