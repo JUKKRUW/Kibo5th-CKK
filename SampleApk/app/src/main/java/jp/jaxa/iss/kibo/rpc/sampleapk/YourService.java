@@ -27,8 +27,8 @@ public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
     Mat CamMatrix, DistCoeffs;
-    final double[][] Cor ={{}};//location
-    final float[][] Qua_Cor ={{}};//quaternion
+    final double[][] Coor ={{}};//location
+    final float[][] Qua_Coor ={{}};//quaternion
 
     @Override
     protected void runPlan1(){
@@ -102,8 +102,8 @@ public class YourService extends KiboRpcService {
     }
 
     private void NAVCamINIT(){
-        Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);
-        Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);
+        Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);//New Camera Matrix
+        Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);//New DistCoeffs
         //set Matrix of Cam & coefficient
         float[] Navcam = {523.105750f, 0.0f, 635.434258f,
                           0.0f, 534.765913f, 500.335102f,
@@ -117,11 +117,9 @@ public class YourService extends KiboRpcService {
     private void ARTAGDetection(Mat id){
         Mat undistort = new Mat();
         List<Mat> corner = new ArrayList<>();
-        //Set Flashlight On
-        api.flashlightControlFront(0.5f);
-        Mat distort = api.getMatNavCam();
-        //Set Flashlight Off
-        api.flashlightControlFront(0.0f);
+        api.flashlightControlFront(0.5f); //Set Flashlight On
+        Mat distort = api.getMatNavCam();//get Mat NavCam
+        api.flashlightControlFront(0.0f);//Set Flashlight Off
 
         //undistort image
         Calib3d.undistort(distort, undistort, CamMatrix, DistCoeffs);
@@ -131,6 +129,8 @@ public class YourService extends KiboRpcService {
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_50);
         Aruco.detectMarkers(undistort, dict,corner, id);
     }
+
+    //Corvet matrix int into integer
     private List<Integer> MatConvertInt(Mat mat){
         List<Integer> Convert = new ArrayList<>();
         for(int i = 0; i < mat.rows(); i++){
