@@ -46,7 +46,7 @@ public class YourService extends KiboRpcService {
         Mat image1 = api.getMatNavCam();
         api.saveMatImage(image1, "image2");
         api.setAreaInfo(2, "item_name", 1);
-        //2
+        //25
         moveTo(10.804, -7.925, 4.534, -0.5f, 0.5f, 0.5f, 0.5f);
         Mat image2 = api.getMatNavCam();
         api.saveMatImage(image2, "image3");
