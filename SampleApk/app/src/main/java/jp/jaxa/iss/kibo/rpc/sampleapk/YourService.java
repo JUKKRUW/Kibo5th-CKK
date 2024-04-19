@@ -82,11 +82,6 @@ public class YourService extends KiboRpcService {
         // write your plan 3 here.
     }
 
-    // You can add your method.
-    private void CamINIT(){
-
-    }
-
     private void MoveTo(double px, double py, double pz,
                         float qx, float qy, float qz, float qw){
 
@@ -103,13 +98,12 @@ public class YourService extends KiboRpcService {
 
                 if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
         } while(!result.hasSucceeded() && loop_count < loop_max);
-        Log.i(TAG,"move successful");
+        Log.i(TAG,"MOVING ENDED");
     }
 
     private void NAVCamINIT(){
         Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);
         Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);
-
         //set Matrix of Cam & coefficient
         float[] Navcam = {523.105750f, 0.0f, 635.434258f,
                           0.0f, 534.765913f, 500.335102f,
@@ -137,7 +131,15 @@ public class YourService extends KiboRpcService {
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_50);
         Aruco.detectMarkers(undistort, dict,corner, id);
     }
-    private void myfunc(){
-        String OHHAY = "WOWOWOWOWW";
+    private List<Integer> MatConvertInt(Mat mat){
+        List<Integer> Convert = new ArrayList<>();
+        for(int i = 0; i < mat.rows(); i++){
+            for(int j = 0; j < mat.cols(); j++){
+                double[] getDouble =  mat.get(i, j);
+                int getInt = (int) getDouble[0];
+                Convert.add(getInt);
+            }
+        }
+        return Convert;
     }
 }
