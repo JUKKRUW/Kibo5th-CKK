@@ -3,6 +3,7 @@ package jp.jaxa.iss.kibo.rpc.sampleapk;
 import android.nfc.Tag;
 import android.util.Log;
 
+import gov.nasa.arc.astrobee.Result;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 
 import gov.nasa.arc.astrobee.types.Point;
@@ -26,6 +27,8 @@ public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
     Mat CamMatrix, DistCoeffs;
+    final double[][] Cor ={{}};//location
+    final float[][] Qua_Cor ={{}};//quaternion
 
     @Override
     protected void runPlan1(){
@@ -84,21 +87,41 @@ public class YourService extends KiboRpcService {
 
     }
 
+    private void MoveTo(double px, double py, double pz,
+                        float qx, float qy, float qz, float qw){
+
+        Point point = new Point(px, py, pz);
+        Quaternion quaternion = new Quaternion(qx, qy, qz, qw);
+        Result result;
+
+        //Check the Astrobee arrive location or not
+        int loop_count = 0, loop_max =3;
+        do {
+                result = api.moveTo(point, quaternion, true);
+                loop_count++;
+                Log.i(TAG, "Trying move to " + px + "," + py + "," + pz + "|" + qx + "," + qy + "," + qz + "," + qw);
+
+                if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
+        } while(!result.hasSucceeded() && loop_count < loop_max);
+        Log.i(TAG,"move successful");
+    }
+
     private void NAVCamINIT(){
         Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);
         Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);
 
         //set Matrix of Cam & coefficient
-        float[] Navcam = {523.105750f, 0.0f, 635.434258f, 0.0f, 534.765913f,
-                500.335102f,0.0f, 0.0f, 1.0f};
+        float[] Navcam = {523.105750f, 0.0f, 635.434258f,
+                          0.0f, 534.765913f, 500.335102f,
+                          0.0f, 0.0f, 1.0f};
         float[] coefficients = {-0.164787f, 0.020375f, -0.001572f, -0.000369f, 0.0f};
         CamMatrix.put(0, 0,Navcam);
         DistCoeffs.put(0, 0, coefficients);
+        Log.i(TAG, "CamINIT SUCCESSFUL");
     }
 
-    private int ARTAGDetection(Mat Source){
-        Mat undistort = new Mat(),
-            IDs = new Mat();
+    private void ARTAGDetection(Mat id){
+        Mat undistort = new Mat();
         List<Mat> corner = new ArrayList<>();
         //Set Flashlight On
         api.flashlightControlFront(0.5f);
@@ -108,16 +131,13 @@ public class YourService extends KiboRpcService {
 
         //undistort image
         Calib3d.undistort(distort, undistort, CamMatrix, DistCoeffs);
+        Log.i(TAG, "Undistorted image succeed");
+
         //ARTAG Detection
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_50);
-        Aruco.detectMarkers(undistort, dict,corner, IDs);
-
-        if (!IDs.empty()){
-            // Get the ID of the latest detected marker
-            Integer lastestID = (int) IDs.get(IDs.rows() - 1, 0)[0];
-            Log.i(TAG, "Marker found IDs:" + lastestID.toString());
-        }
-        int x;
-        return  x = 0;
+        Aruco.detectMarkers(undistort, dict,corner, id);
+    }
+    private void myfunc(){
+        String OHHAY = "WOWOWOWOWW";
     }
 }
