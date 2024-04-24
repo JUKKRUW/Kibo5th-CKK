@@ -32,7 +32,7 @@ public class YourService extends KiboRpcService {
             {10.804f, -7.925f, 4.867f}, //Area 3 Coordinate
             {11.15f , -6.422f, 4.967f}  //Area 4 Coordinate
     };
-    final float[][] qua = {{},//astronuat
+    final float[][] qua = {{},//Astronaut
             {0 ,0 , -0.707f, 0.707f},//Area 1 Quaternion
             {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
             {0.0f, 0.0f, 1.0f, 0.0f},//Area 3 Quaternion
@@ -43,9 +43,8 @@ public class YourService extends KiboRpcService {
     protected void runPlan1(){
         // The mission starts.
         api.startMission();
-        api.startMission();
-        NAVCamINIT();
-        moveTo(1);
+        Mat image = api.getMatDockCam();
+        api.saveMatImage(image, "Test01");
     }
 
     @Override
