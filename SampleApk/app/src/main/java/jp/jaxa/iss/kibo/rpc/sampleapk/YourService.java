@@ -26,49 +26,59 @@ public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
     Mat CamMatrix, DistCoeffs;
-    final double[][] Coor ={{}};//location
-    final float[][] Qua_Coor ={{}};//quaternion
+    final double[][] Coordinate ={{},//astronaut
+                            {10.905f, -9.806f, 5.195f}, //Area 1 Coordinate
+                            {10.925f, -8.875f, 4.08803},//Area 2 Coordinate
+                            {10.804f, -7.925f, 4.867f}, //Area 3 Coordinate
+                            {11.15f , -6.422f, 4.967f}  //Area 4 Coordinate
+                            };
+    final float[][] qua = {{},//astronuat
+                            {0 ,0 , -0.707f, 0.707f},//Area 1 Quaternion
+                            {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
+                            {0.0f, 0.0f, 1.0f, 0.0f},//Area 3 Quaternion
+                            {0f, 0f, -0.707f, 0.707f}//Area 4 Quaternion
+                            };
 
     @Override
     protected void runPlan1(){
         // The mission starts.
         api.startMission();
+        NAVCamINIT();
+        moveTo(1);
 
+<<<<<<< HEAD
+=======
         // Move to a point.
-        Point point = new Point(10.9d, -9.92284d, 5.195d);
-        Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
-
+        moveTo(10.804, -9.806, 5.2372, 0f, 0f, -0.707f, 0.707f);
         // Get a camera image.
         Mat image = api.getMatNavCam();
-
-        /* *********************************************************************** */
-        /* Write your code to recognize type and number of items in the each area! */
-        /* *********************************************************************** */
-
-        // When you recognize items, let’s set the type and number.
+        api.saveMatImage(image, "image1");
         api.setAreaInfo(1, "item_name", 1);
-
-        /* **************************************************** */
-        /* Let's move to the each area and recognize the items. */
-        /* **************************************************** */
-
-        // When you move to the front of the astronaut, report the rounding completion.
+        //1
+        moveTo(10.67, -9.45, 4.77, -0.5f, 0.5f, 0.5f, 0.5f);
+        moveTo(10.925, -8.875, 4.534, -0.5f, 0.5f, 0.5f, 0.5f);
+        Mat image1 = api.getMatNavCam();
+        api.saveMatImage(image1, "image2");
+        api.setAreaInfo(2, "item_name", 1);
+        //25
+        moveTo(10.804, -7.925, 4.534, -0.5f, 0.5f, 0.5f, 0.5f);
+        Mat image2 = api.getMatNavCam();
+        api.saveMatImage(image2, "image3");
+        api.setAreaInfo(3, "item_name", 1);
+        //3
+        moveTo(10.804, -7.925, 4.867, 0f, 0f, 1f, 0f);
+        Mat image3 = api.getMatNavCam();
+        api.saveMatImage(image3, "image4");
+        api.setAreaInfo(4, "item_name", 1);
+        //4
+        moveTo(11.15, -6.422, 4.967, 0f, 0f, -0.707f, 0.707f);
+        Mat image4 = api.getMatNavCam();
+        api.saveMatImage(image4, "image5");
         api.reportRoundingCompletion();
-
-        /* ********************************************************** */
-        /* Write your code to recognize which item the astronaut has. */
-        /* ********************************************************** */
-
-        // Let's notify the astronaut when you recognize it.
         api.notifyRecognitionItem();
-
-        /* ******************************************************************************************************* */
-        /* Write your code to move Astrobee to the location of the target item (what the astronaut is looking for) */
-        /* ******************************************************************************************************* */
-
-        // Take a snapshot of the target item.
         api.takeTargetItemSnapshot();
+>>>>>>> 59efb27fc39b8083cc6906b51a2b30cda0cdeae5
+    }
     }
 
     @Override
@@ -81,7 +91,7 @@ public class YourService extends KiboRpcService {
         // write your plan 3 here.
     }
 
-    private void MoveTo(double px, double py, double pz,
+    private void moveTo(double px, double py, double pz,
                         float qx, float qy, float qz, float qw){
 
         Point point = new Point(px, py, pz);
@@ -98,6 +108,11 @@ public class YourService extends KiboRpcService {
             if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
         } while(!result.hasSucceeded() && loop_count < loop_max);
         Log.i(TAG,"MOVING ENDED");
+    }
+
+    private void moveTo(int coor){
+        moveTo(Coordinate[coor][0], Coordinate[coor][1], Coordinate[coor][2],
+                qua[coor][0], qua[coor][1],qua[coor][2], qua[coor][3]);
     }
 
     private void NAVCamINIT(){
@@ -140,5 +155,9 @@ public class YourService extends KiboRpcService {
             }
         }
         return Convert;
+    }
+
+    private  void Something(){
+        
     }
 }
