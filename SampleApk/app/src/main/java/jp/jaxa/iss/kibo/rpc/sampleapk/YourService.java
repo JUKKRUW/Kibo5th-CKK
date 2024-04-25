@@ -80,6 +80,7 @@ public class YourService extends KiboRpcService {
 >>>>>>> 59efb27fc39b8083cc6906b51a2b30cda0cdeae5
     }
     }
+    }
 
     @Override
     protected void runPlan2(){
