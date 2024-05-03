@@ -8,11 +8,13 @@ import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 
+import org.checkerframework.common.value.qual.StringVal;
 import org.opencv.aruco.Aruco;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.aruco.Dictionary;
+import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,9 @@ import java.util.List;
 public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
-    Mat CamMatrix, DistCoeffs;
+    Mat IDs, CamMatrix, DistCoeffs, tVec;
+    List<Mat> corner = new ArrayList<>();
+
     final double[][] Coordinate ={{},//astronaut
             {10.905f, -9.806f, 5.195f}, //Area 1 Coordinate
             {10.925f, -8.875f, 4.08803},//Area 2 Coordinate
@@ -43,8 +47,12 @@ public class YourService extends KiboRpcService {
     protected void runPlan1(){
         // The mission starts.
         api.startMission();
-        Mat image = api.getMatDockCam();
-        api.saveMatImage(image, "Test01");
+        NAVCamINIT();
+        moveTo(1);
+        Mat img = api.getMatNavCam();
+        Mat dst = new Mat();
+        Calib3d.undistort(img,dst, CamMatrix, DistCoeffs);
+        api.saveMatImage(dst, "Image1.png");
     }
 
     @Override
@@ -71,7 +79,7 @@ public class YourService extends KiboRpcService {
             loop_count++;
             Log.i(TAG, "Trying move to " + px + "," + py + "," + pz + "|" + qx + "," + qy + "," + qz + "," + qw);
 
-            if (loop_count == loop_max) { Log.i(TAG, "Somethin went wrong"); } //tell team if Astrobee can't move to coordinate
+            if (loop_count == loop_max) { Log.i(TAG, "Something went wrong"); } //tell team if Astrobee can't move to coordinate
         } while(!result.hasSucceeded() && loop_count < loop_max);
         Log.i(TAG,"MOVING ENDED");
     }
@@ -82,37 +90,23 @@ public class YourService extends KiboRpcService {
     }
 
     private void NAVCamINIT(){
-        Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);//New Camera Matrix
-        Mat DistCoeffs = new Mat(3,3,CvType.CV_32F);//New DistCoeffs
         //set Matrix of Cam & coefficient
         float[] Navcam = {523.105750f, 0.0f, 635.434258f,
                 0.0f, 534.765913f, 500.335102f,
                 0.0f, 0.0f, 1.0f};
         float[] coefficients = {-0.164787f, 0.020375f, -0.001572f, -0.000369f, 0.0f};
+
         CamMatrix.put(0, 0,Navcam);
         DistCoeffs.put(0, 0, coefficients);
         Log.i(TAG, "CamINIT SUCCESSFUL");
     }
 
-    private void ARTAGDetection(Mat id){
-        Mat undistort = new Mat();
-        List<Mat> corner = new ArrayList<>();
-        api.flashlightControlFront(0.5f); //Set Flashlight On
-        Mat distort = api.getMatNavCam();//get Mat NavCam
-        api.flashlightControlFront(0.0f);//Set Flashlight Off
-
-        //undistort image
-        Calib3d.undistort(distort, undistort, CamMatrix, DistCoeffs);
-        Log.i(TAG, "Undistorted image succeed");
-
-        //ARTAG Detection
-        Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_50);
-        Aruco.detectMarkers(undistort, dict,corner, id);
-    }
 
     //Corvet matrix int into integer
+
     private List<Integer> MatConvertInt(Mat mat){
         List<Integer> Convert = new ArrayList<>();
+
         for(int i = 0; i < mat.rows(); i++){
             for(int j = 0; j < mat.cols(); j++){
                 double[] getDouble =  mat.get(i, j);
@@ -122,4 +116,6 @@ public class YourService extends KiboRpcService {
         }
         return Convert;
     }
+
+
 }
