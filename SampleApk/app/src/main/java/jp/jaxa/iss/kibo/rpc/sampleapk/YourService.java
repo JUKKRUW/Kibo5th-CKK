@@ -8,8 +8,8 @@ import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 
-import org.checkerframework.common.value.qual.StringVal;
 import org.opencv.aruco.Aruco;
+import org.opencv.aruco.DetectorParameters;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.calib3d.Calib3d;
@@ -37,7 +37,7 @@ public class YourService extends KiboRpcService {
             {11.15f , -6.422f, 4.967f}  //Area 4 Coordinate
     };
     final float[][] qua = {{},//Astronaut
-            {0 ,0 , -0.707f, 0.707f},//Area 1 Quaternion
+            {0.f ,0.0f , -0.707f, 0.707f},//Area 1 Quaternion
             {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
             {0.0f, 0.0f, 1.0f, 0.0f},//Area 3 Quaternion
             {0f, 0f, -0.707f, 0.707f}//Area 4 Quaternion
@@ -47,12 +47,8 @@ public class YourService extends KiboRpcService {
     protected void runPlan1(){
         // The mission starts.
         api.startMission();
-        NAVCamINIT();
         moveTo(1);
-        Mat img = api.getMatNavCam();
-        Mat dst = new Mat();
-        Calib3d.undistort(img,dst, CamMatrix, DistCoeffs);
-        api.saveMatImage(dst, "Image1.png");
+        NAVCamINIT();
     }
 
     @Override
@@ -91,9 +87,9 @@ public class YourService extends KiboRpcService {
 
     private void NAVCamINIT(){
         //set Matrix of Cam & coefficient
-        float[] Navcam = {523.105750f, 0.0f, 635.434258f,
-                0.0f, 534.765913f, 500.335102f,
-                0.0f, 0.0f, 1.0f};
+        float[] Navcam =   {523.105750f, 0.0f, 635.434258f,
+                            0.0f, 534.765913f, 500.335102f,
+                            0.0f, 0.0f, 1.0f};
         float[] coefficients = {-0.164787f, 0.020375f, -0.001572f, -0.000369f, 0.0f};
 
         CamMatrix.put(0, 0,Navcam);
@@ -101,9 +97,7 @@ public class YourService extends KiboRpcService {
         Log.i(TAG, "CamINIT SUCCESSFUL");
     }
 
-
-    //Corvet matrix int into integer
-
+    //Corvet matrix into integer
     private List<Integer> MatConvertInt(Mat mat){
         List<Integer> Convert = new ArrayList<>();
 
@@ -117,5 +111,39 @@ public class YourService extends KiboRpcService {
         return Convert;
     }
 
+    private Mat getImageTrain(){
+        //Set up variable
+        int ARTagLength = 5; //Centimeter
+        Mat undistorted = new Mat(),
+            IDs = new Mat(),
+            rVec = new Mat(),
+            tVec = new Mat();
+        List<Mat> corners = new ArrayList<>(); //Store corner of ARTAg
+        Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250); //ARTAg is 5*5 pixel
 
+        //no use
+        /* DetectorParameters parameters = DetectorParameters.create(); */
+
+        //Get an image and undistrot the image
+        api.flashlightControlFront(0.05f);
+        Mat distort = api. getMatNavCam();
+        api.flashlightControlFront(0.0f);
+        Calib3d.undistort(distort, undistorted, CamMatrix, DistCoeffs);//undistorted image
+
+        //Detect ARTag
+        Aruco.detectMarkers(undistorted, dict ,corners, IDs);
+        if (corners != null){ Log.i(TAG, "Found the ARTAG!!"); }
+        else {Log.i(TAG, "No ARTAg Found");}
+
+        //get Rotation vector and translation vectors
+        Aruco.estimatePoseSingleMarkers(corners, ARTagLength, CamMatrix, DistCoeffs, rVec, tVec);
+        double Dist_x = tVec.get(0, 0)[0];//Distance from camara X-axis
+        double Dist_y = tVec.get(1, 0)[0];//Distance from camara y-axis
+        double Dist_z = tVec.get(2, 0)[0];//Distance from camara z-axis
+        double rotate_x = rVec.get(0, 0)[0];//Rotation of ARTAG  x-axis
+        double rotate_y = rVec.get(0, 0)[0];//Rotation of ARTAG  y-axis
+        double rotate_z = rVec.get(0, 0)[0];//Rotation of ARTAG  z-axis
+
+        return  undistorted;
+    }
 }
