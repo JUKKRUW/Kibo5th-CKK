@@ -14,6 +14,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.aruco.Dictionary;
+import org.opencv.core.Rect;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ import java.util.List;
 public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
-    Mat IDs, CamMatrix, DistCoeffs, tVec;
+    Mat CamMatrix, DistCoeffs;
     List<Mat> corner = new ArrayList<>();
 
     final double[][] Coordinate ={{},//astronaut
@@ -48,7 +49,8 @@ public class YourService extends KiboRpcService {
         // The mission starts.
         api.startMission();
         moveTo(1);
-        NAVCamINIT();
+        Mat image1 = getImageTrain();
+        api.saveMatImage(image1, "Image1.png");
     }
 
     @Override
@@ -85,7 +87,9 @@ public class YourService extends KiboRpcService {
                 qua[coor][0], qua[coor][1],qua[coor][2], qua[coor][3]);
     }
 
-    private void NAVCamINIT(){
+    /*private void NAVCamINIT(){
+        Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);
+        Mat DistCoeffs = new Mat(5, 1, CvType.CV_32F);
         //set Matrix of Cam & coefficient
         float[] Navcam =   {523.105750f, 0.0f, 635.434258f,
                             0.0f, 534.765913f, 500.335102f,
@@ -95,7 +99,7 @@ public class YourService extends KiboRpcService {
         CamMatrix.put(0, 0,Navcam);
         DistCoeffs.put(0, 0, coefficients);
         Log.i(TAG, "CamINIT SUCCESSFUL");
-    }
+    }*/
 
     //Corvet matrix into integer
     private List<Integer> MatConvertInt(Mat mat){
@@ -111,39 +115,43 @@ public class YourService extends KiboRpcService {
         return Convert;
     }
 
-    private Mat getImageTrain(){
+    private Mat getImageTrain()
+    {
         //Set up variable
-        int ARTagLength = 5; //Centimeter
+        int ARTagLength = 5; //Centimetre
         Mat undistorted = new Mat(),
             IDs = new Mat(),
             rVec = new Mat(),
             tVec = new Mat();
-        List<Mat> corners = new ArrayList<>(); //Store corner of ARTAg
-        Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250); //ARTAg is 5*5 pixel
-
-        //no use
-        /* DetectorParameters parameters = DetectorParameters.create(); */
+        List<Mat> corners = new ArrayList<>();  //Store corner of ARTAg
+        Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);    //ARTAg is 5*5 pixel
 
         //Get an image and undistrot the image
         api.flashlightControlFront(0.05f);
         Mat distort = api. getMatNavCam();
         api.flashlightControlFront(0.0f);
-        Calib3d.undistort(distort, undistorted, CamMatrix, DistCoeffs);//undistorted image
+
 
         //Detect ARTag
-        Aruco.detectMarkers(undistorted, dict ,corners, IDs);
-        if (corners != null){ Log.i(TAG, "Found the ARTAG!!"); }
+        Aruco.detectMarkers(distort, dict ,corners, IDs);
+        if (IDs != null){ Log.i(TAG, "Found the ARTAG!!"); }
         else {Log.i(TAG, "No ARTAg Found");}
 
-        //get Rotation vector and translation vectors
-        Aruco.estimatePoseSingleMarkers(corners, ARTagLength, CamMatrix, DistCoeffs, rVec, tVec);
-        double Dist_x = tVec.get(0, 0)[0];//Distance from camara X-axis
-        double Dist_y = tVec.get(1, 0)[0];//Distance from camara y-axis
-        double Dist_z = tVec.get(2, 0)[0];//Distance from camara z-axis
-        double rotate_x = rVec.get(0, 0)[0];//Rotation of ARTAG  x-axis
-        double rotate_y = rVec.get(0, 0)[0];//Rotation of ARTAG  y-axis
-        double rotate_z = rVec.get(0, 0)[0];//Rotation of ARTAG  z-axis
 
-        return  undistorted;
+        //Cropping image
+        Mat mat_corner = corners.get(0);
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        for (int i = 0; i < mat_corner.rows(); i++) {
+            double[] c = mat_corner.get(i, 0);
+            minX = Math.min(minX, c[0]);
+            minY = Math.min(minY, c[1]);
+        }
+        int x = (int) Math.max(0, minX - 300);
+        int y = (int) Math.max(0, minY - 350);
+        Rect map = new Rect(x, y, 300, 350);
+        Mat cropped_image = new Mat(distort, map);
+        api.saveMatImage(cropped_image,"cring.png");
+        return  cropped_image;
     }
 }
