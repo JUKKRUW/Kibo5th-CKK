@@ -30,18 +30,19 @@ public class YourService extends KiboRpcService {
     final String TAG = "CKK-SWPP";
     Mat CamMatrix, DistCoeffs;
     List<Mat> corner = new ArrayList<>();
+    int num = 1;
 
-    final double[][] Coordinate ={{},//astronaut
-            {10.905f, -9.806f, 5.195f}, //Area 1 Coordinate
-            {10.925f, -8.875f, 4.08803},//Area 2 Coordinate
-            {10.804f, -7.925f, 4.867f}, //Area 3 Coordinate
-            {11.15f , -6.422f, 4.967f}  //Area 4 Coordinate
+    final double[][] Coordinate ={  {11.143, -6.337, 4.964},//astronaut
+                                    {10.905f, -9.806f, 5.195f}, //Area 1 Coordinate
+                                    {10.67, -9.45, 4.77},//Area 2 Coordinate
+                                    {10.804, -7.925, 4.534}, //Area 3 Coordinate
+                                    {10.554,-6.66,4.73}  //Area 4 Coordinate
     };
-    final float[][] qua = {{},//Astronaut
-            {0.f ,0.0f , -0.707f, 0.707f},//Area 1 Quaternion
-            {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
-            {0.0f, 0.0f, 1.0f, 0.0f},//Area 3 Quaternion
-            {0f, 0f, -0.707f, 0.707f}//Area 4 Quaternion
+    final float[][] qua = {{0f, 0f, 0.707f, -0.707f},//Astronaut
+                            {0.f ,0.0f , -0.707f, 0.707f},//Area 1 Quaternion
+                            {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
+                                {-0.5f, 0.5f, 0.5f, 0.5f},//Area 3 Quaternion
+                            {0f, 0.707f, 0.707f, 0f}//Area 4 Quaternion
     };
 
     @Override
@@ -51,6 +52,17 @@ public class YourService extends KiboRpcService {
         moveTo(1);
         Mat image1 = getImageTrain();
         api.saveMatImage(image1, "Image1.png");
+        moveTo(2);
+        moveTo(10.925, -8.875, 4.534, -0.5f, 0.5f, 0.5f, 0.5f );
+        Mat image2 = getImageTrain();
+        api.saveMatImage(image2, "image2.png");
+        moveTo((3));
+        Mat image3 = getImageTrain();
+        api.saveMatImage(image3, "image3.png");
+        moveTo((4));
+        Mat image4 = getImageTrain();
+        api.saveMatImage(image4, "image4.png");
+
     }
 
     @Override
@@ -120,13 +132,11 @@ public class YourService extends KiboRpcService {
         //Set up variable
         int ARTagLength = 5; //Centimetre
         Mat undistorted = new Mat(),
-            IDs = new Mat(),
-            rVec = new Mat(),
-            tVec = new Mat();
+            IDs = new Mat();
         List<Mat> corners = new ArrayList<>();  //Store corner of ARTAg
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);    //ARTAg is 5*5 pixel
 
-        //Get an image and undistrot the image
+        //Get an image
         api.flashlightControlFront(0.05f);
         Mat distort = api. getMatNavCam();
         api.flashlightControlFront(0.0f);
@@ -147,11 +157,14 @@ public class YourService extends KiboRpcService {
             minX = Math.min(minX, c[0]);
             minY = Math.min(minY, c[1]);
         }
-        int x = (int) Math.max(0, minX - 300);
-        int y = (int) Math.max(0, minY - 350);
-        Rect map = new Rect(x, y, 300, 350);
+        int x = (int) Math.max(0, minX - 170);
+        int y = (int) Math.max(0, minY - 195);
+        Rect map = new Rect(x, y, 400, 400);
         Mat cropped_image = new Mat(distort, map);
-        api.saveMatImage(cropped_image,"cring.png");
+
+        //Save original to compare with cropped image
+        api.saveMatImage(distort,"Original_Image" + num + ".png");
+        num +=1;
         return  cropped_image;
     }
 }
