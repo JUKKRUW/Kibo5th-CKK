@@ -33,7 +33,7 @@ public class YourService extends KiboRpcService {
     int num = 1;
 
     final double[][] Coordinate ={  {11.143, -6.337, 4.964},//astronaut
-                                    {10.905f, -9.806f, 5.195f}, //Area 1 Coordinate
+                                    {10.905, -9.806, 5.195}, //Area 1 Coordinate
                                     {10.67, -9.45, 4.77},//Area 2 Coordinate
                                     {10.804, -7.925, 4.534}, //Area 3 Coordinate
                                     {10.554,-6.66,4.73}  //Area 4 Coordinate
