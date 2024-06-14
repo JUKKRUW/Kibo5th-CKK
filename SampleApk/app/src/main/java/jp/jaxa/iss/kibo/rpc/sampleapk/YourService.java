@@ -1,5 +1,7 @@
 package jp.jaxa.iss.kibo.rpc.sampleapk;
+import jp.jaxa.iss.kibo.rpc.sampleapk.Detection;
 
+import android.content.Context;
 import android.util.Log;
 
 import gov.nasa.arc.astrobee.Result;
@@ -19,8 +21,12 @@ import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.tensorflow.lite.Interpreter;
 
+import java.io.IOException;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -37,24 +43,41 @@ public class YourService extends KiboRpcService {
 
     final double[][] Coordinate = {{11.143, -6.337, 4.964},//astronaut
             {10.905, -9.806, 5.195}, //Area 1 Coordinate
-            {10.67, -9.45, 4.77},//Area 2 Coordinate
+            {10.925, -8.875, 4.534},//Area 2 Coordinate
             {10.804, -7.925, 4.534}, //Area 3 Coordinate
-            {10.554, -6.66, 4.73}  //Area 4 Coordinate
+            {10.554, -6.66, 4.73},  //Area 4 Coordinate
+            {10.67, -9.45, 4.77} //Bridge 1 -> 2
     };
     final float[][] qua = {{0f, 0f, 0.707f, -0.707f},//Astronaut
             {0.f, 0.0f, -0.707f, 0.707f},//Area 1 Quaternion
-            {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
+            { -0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
             {-0.5f, 0.5f, 0.5f, 0.5f},//Area 3 Quaternion
-            {0f, 0.707f, 0.707f, 0f}//Area 4 Quaternion
+            {0f, 0.707f, 0.707f, 0f},//Area 4 Quaternion
+            {-0.5f, 0.5f, 0.5f, 0.5f} //Bridge 1 -> 2
     };
+
+    private HashMap<Integer, String> Names    = new HashMap<Integer, String>()
+    {{
+        put(1,"beaker"               );
+        put(2,"goggle"            );
+        put(3,"hammer"              );
+        put(4,"kapton_tape"                 );
+        put(5,"pipette");
+        put(6,"screwdriver"                );
+        put(7,"thermometer"               );
+        put(8,"top"            );
+        put(9,"watch"              );
+        put(10,"wrench"                 );
+    }};
 
     @Override
     protected void runPlan1() {
         // The mission starts.
         api.startMission();
         moveTo(1);
-        getImageTrain();
+        
 
+        api.notifyRecognitionItem();
     }
 
     @Override
@@ -121,69 +144,56 @@ public class YourService extends KiboRpcService {
         return Convert;
     }
 
-    private void getImageTrain() {
+    private void getImageTrain() throws IOException {
         //Set up variable
-        Mat threshold = new Mat(),
-            hierarchy = new Mat();
-        List<MatOfPoint> contours = new ArrayList<>();
+        int ARTagLength = 5; //Centimetre
+        Mat undistorted = new Mat(),
+                IDs = new Mat();
+        List<Mat> corners = new ArrayList<>();  //Store corner of ARTAg
+        Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);    //ARTAg is 5*5 pixel
 
-        //get  an image from NAVcam Astrobee and processing image
+        //Get an image
         api.flashlightControlFront(0.05f);
-        Mat image = api.getMatNavCam();
+        Mat distort = api. getMatNavCam();
         api.flashlightControlFront(0.0f);
-        api.saveMatImage(image, "Original_image" + num + ".png");
+
+        //Save original to compare with cropped image
+        api.saveMatImage(distort,"Original_Image" + num + ".png");
+
+        //Detect ARTag
+        Aruco.detectMarkers(distort, dict ,corners, IDs);
+        if (IDs != null){ Log.i(TAG, "Found the ARTAG!!"); }
+        else {Log.i(TAG, "No ARTAg Found");}
 
 
-        /*//Converting aninput image to black-white image
-        Imgproc.cvtColor(image, image, Imgproc.COLOR_RGB2GRAY);
-        Log.i(TAG, "Converting image to gray image (Image" + num + ")");
-        api.saveMatImage(image, "Gray_image_" + num + ".png"); */
-
-        //Threshold an image
-        Imgproc.threshold(image, threshold, 238, 255, Imgproc.THRESH_BINARY);
-        Log.i(TAG, "Converting image to threshold image (Image" + num + ")");
-        api.saveMatImage(threshold, "Threshold_image_" + num + ".png");
-
-        //Find  contour
-        Imgproc.findContours(threshold, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        //Find the rectrangular shape
-        for (MatOfPoint cnt : contours) {
-
-            //set up an value for finding rectrangular shape
-            MatOfPoint2f approxCurve = new MatOfPoint2f();
-            Mat warped = new Mat();
-
-            //calculate to find any contour
-            double epsilon = 0.005 * Imgproc.arcLength(new MatOfPoint2f(cnt.toArray()), true);
-            Imgproc.approxPolyDP(new MatOfPoint2f(cnt.toArray()), approxCurve, epsilon, true);
-            double area = Imgproc.contourArea(cnt);                                                   //use this func to cal area of contour
-
-            if (approxCurve.total() == 4 && area >= 100) {
-                // Ensure it's a rectangle by checking aspect ratio
-                Rect rect = Imgproc.boundingRect(cnt);
-                double aspectRatio = (double) rect.width / rect.height;
-
-                if (0.9 <= aspectRatio && aspectRatio <= 1.1) { // Allowing for some tolerance in aspect ratio
-                    // Get the corner points
-                    org.opencv.core.Point[] points = approxCurve.toArray();
-
-                    // Destination coordinates for perspective transform
-                    MatOfPoint2f src = new MatOfPoint2f(points);
-                    MatOfPoint2f dst = new MatOfPoint2f(new org.opencv.core.Point(0, 0),
-                            new org.opencv.core.Point(320, 0),
-                            new org.opencv.core.Point(320, 320),
-                            new org.opencv.core.Point(0, 320));
-
-                    // Get the perspective transform matrix and use
-                    Mat M = Imgproc.getPerspectiveTransform(src, dst);
-                    Imgproc.warpPerspective(image, warped, M, new Size(320, 320));
-                    api.saveMatImage(warped, "warped_image" + num + ".png");
-     /*--------------------------------------------------------------------------------------*/
-    num += 1;
-
-                }
-            }
+        //Cropping image
+        Mat mat_corner = corners.get(0);
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        for (int i = 0; i < mat_corner.rows(); i++) {
+            double[] c = mat_corner.get(i, 0);
+            minX = Math.min(minX, c[0]);
+            minY = Math.min(minY, c[1]);
         }
+        int x = (int) Math.max(0, minX - 170);
+        int y = (int) Math.max(0, minY - 195);
+        Rect map = new Rect(x, y, Math.min(512, 1228 - x), Math.min(512,800-y));
+        Mat cropped_image = new Mat(distort, map);
+
+        api.saveMatImage(cropped_image, "Cropped_image_" + num + ".png");
+
+
+        Detection model = new Detection(getApplicationContext());
+        DetectionResult result = model.runInference(cropped_image);
+
+        int numDetections = result.numDetections;
+        float[] classes = result.classes;
+        int u = (int)classes[0];
+        String report_name = Names.get(u);
+
+        api.setAreaInfo(num, report_name, numDetections);
+
+
+        num +=1;
     }
 }

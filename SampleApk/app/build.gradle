@@ -50,4 +50,6 @@ dependencies {
     }
     testCompile 'junit:junit:4.12'
     compile 'com.quickbirdstudios:opencv-contrib:4.5.3.0'
+    implementation 'org.tensorflow:tensorflow-lite:2.4.0' // Use the latest version available
+    implementation 'org.tensorflow:tensorflow-lite-support:0.1.0'
 }
