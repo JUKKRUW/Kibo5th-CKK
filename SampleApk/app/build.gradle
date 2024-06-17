@@ -20,6 +20,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    aaptOptions {
+        noCompress "tflite"
+    }
+
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES.txt'
         exclude 'META-INF/LICENSE.txt'
@@ -50,6 +55,7 @@ dependencies {
     }
     testCompile 'junit:junit:4.12'
     compile 'com.quickbirdstudios:opencv-contrib:4.5.3.0'
-    implementation 'org.tensorflow:tensorflow-lite:2.4.0' // Use the latest version available
-    implementation 'org.tensorflow:tensorflow-lite-support:0.1.0'
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.4'
+
 }

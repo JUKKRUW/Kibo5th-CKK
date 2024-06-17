@@ -1,7 +1,6 @@
 package jp.jaxa.iss.kibo.rpc.sampleapk;
-import jp.jaxa.iss.kibo.rpc.sampleapk.Detection;
 
-import android.content.Context;
+import android.graphics.Bitmap;
 import android.util.Log;
 
 import gov.nasa.arc.astrobee.Result;
@@ -10,21 +9,19 @@ import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 
+import org.opencv.android.Utils;
 import org.opencv.aruco.Aruco;
-import org.opencv.aruco.DetectorParameters;
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.calib3d.Calib3d;
 import org.opencv.aruco.Dictionary;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-import org.tensorflow.lite.Interpreter;
+import org.opencv.core.*;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.task.vision.detector.Detection;
 
-import java.io.IOException;
-import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +34,7 @@ import java.util.List;
 public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
-    Mat CamMatrix, DistCoeffs;
+
     List<Mat> corner = new ArrayList<>();
     int num = 1;
 
@@ -58,26 +55,39 @@ public class YourService extends KiboRpcService {
 
     private HashMap<Integer, String> Names    = new HashMap<Integer, String>()
     {{
-        put(1,"beaker"               );
-        put(2,"goggle"            );
-        put(3,"hammer"              );
-        put(4,"kapton_tape"                 );
+        put(1,"beaker");
+        put(2,"goggle");
+        put(3,"hammer");
+        put(4,"kapton_tape");
         put(5,"pipette");
-        put(6,"screwdriver"                );
-        put(7,"thermometer"               );
-        put(8,"top"            );
-        put(9,"watch"              );
-        put(10,"wrench"                 );
+        put(6,"screwdriver");
+        put(7,"thermometer");
+        put(8,"top");
+        put(9,"watch");
+        put(10,"wrench");
     }};
 
     @Override
     protected void runPlan1() {
         // The mission starts.
         api.startMission();
-        moveTo(1);
-        
 
-        api.notifyRecognitionItem();
+        moveTo(1);
+        getAreaInfo();
+
+        moveTo(5);
+        moveTo(2);
+        getAreaInfo();
+
+        moveTo(3);
+        getAreaInfo();
+
+        moveTo(4);
+        getAreaInfo();
+
+api.reportRoundingCompletion();
+api.notifyRecognitionItem();
+
     }
 
     @Override
@@ -117,17 +127,8 @@ public class YourService extends KiboRpcService {
     }
 
     private void NAVCamINIT() {
-        Mat CamMatrix = new Mat(3, 3, CvType.CV_32F);
-        Mat DistCoeffs = new Mat(5, 1, CvType.CV_32F);
         //set Matrix of Cam & coefficient
-        float[] Navcam = {523.105750f, 0.0f, 635.434258f,
-                0.0f, 534.765913f, 500.335102f,
-                0.0f, 0.0f, 1.0f};
-        float[] coefficients = {-0.164787f, 0.020375f, -0.001572f, -0.000369f, 0.0f};
 
-        CamMatrix.put(0, 0, Navcam);
-        DistCoeffs.put(0, 0, coefficients);
-        Log.i(TAG, "CamINIT SUCCESSFUL");
     }
 
     //Corvet matrix into integer
@@ -144,33 +145,47 @@ public class YourService extends KiboRpcService {
         return Convert;
     }
 
-    private void getImageTrain() throws IOException {
-        //Set up variable
-        int ARTagLength = 5; //Centimetre
-        Mat undistorted = new Mat(),
-                IDs = new Mat();
+    private Mat getCroppedImage()  {
+        //Setup CAM
+        Mat CamMatrix = new Mat(3, 3, CvType.CV_64F);
+        Mat DistCoeffs = new Mat(1, 5, CvType.CV_64F);
+
+        CamMatrix.put(0, 0, api.getNavCamIntrinsics()[0]);
+        DistCoeffs.put(0, 0, api.getNavCamIntrinsics()[1]);
+        DistCoeffs.convertTo(DistCoeffs, CvType.CV_64F);
+        Log.i(TAG, "CamINIT SUCCESSFUL");
+
+        //Setup for crop
+        float ARTagLength = 0.5f; //Metre
+        Mat     IDs             = new Mat(),
+                rvec            = new Mat(),
+                tvec            = new Mat(),
+                undistorted     = new Mat();
         List<Mat> corners = new ArrayList<>();  //Store corner of ARTAg
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);    //ARTAg is 5*5 pixel
 
         //Get an image
         api.flashlightControlFront(0.05f);
-        Mat distort = api. getMatNavCam();
+        Mat image = api. getMatNavCam();
         api.flashlightControlFront(0.0f);
-
         //Save original to compare with cropped image
-        api.saveMatImage(distort,"Original_Image" + num + ".png");
+        api.saveMatImage(image,"Original_Image" + num + ".png");
+
+        //Undistorted image
+        Calib3d.undistort(image, undistorted, CamMatrix, DistCoeffs);
+        api.saveMatImage(undistorted,"Undistorted_Image" + num + ".png");
 
         //Detect ARTag
-        Aruco.detectMarkers(distort, dict ,corners, IDs);
-        if (IDs != null){ Log.i(TAG, "Found the ARTAG!!"); }
-        else {Log.i(TAG, "No ARTAg Found");}
+        Aruco.detectMarkers(image, dict ,corners, IDs);
+        Log.i(TAG, "Finding ARTag...");
 
 
         //Cropping image
         Mat mat_corner = corners.get(0);
         double minX = Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;
-        for (int i = 0; i < mat_corner.rows(); i++) {
+        for (int i = 0; i < mat_corner.rows(); i++)
+        {
             double[] c = mat_corner.get(i, 0);
             minX = Math.min(minX, c[0]);
             minY = Math.min(minY, c[1]);
@@ -178,22 +193,22 @@ public class YourService extends KiboRpcService {
         int x = (int) Math.max(0, minX - 170);
         int y = (int) Math.max(0, minY - 195);
         Rect map = new Rect(x, y, Math.min(512, 1228 - x), Math.min(512,800-y));
-        Mat cropped_image = new Mat(distort, map);
-
+        Mat cropped_image = new Mat(undistorted, map);
         api.saveMatImage(cropped_image, "Cropped_image_" + num + ".png");
 
 
-        Detection model = new Detection(getApplicationContext());
-        DetectionResult result = model.runInference(cropped_image);
 
-        int numDetections = result.numDetections;
-        float[] classes = result.classes;
-        int u = (int)classes[0];
-        String report_name = Names.get(u);
+        return cropped_image;
+    }
 
-        api.setAreaInfo(num, report_name, numDetections);
-
-
+    private void getAreaInfo(){
+        Mat img = getCroppedImage();
+        Bitmap bitmap = null;
+        Utils.matToBitmap(img, bitmap);
+        DetectionHelper detect = new DetectionHelper();
+        String name = detect.NameOfDetection(img).get(0);
+        api.setAreaInfo(num,name,1);
         num +=1;
     }
+
 }
