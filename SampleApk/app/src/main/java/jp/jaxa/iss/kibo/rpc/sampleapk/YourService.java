@@ -36,7 +36,6 @@ import java.util.Map;
 public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
-    private  DetectionHelper detectionHelper;
     List<Mat> corner = new ArrayList<>();
     int num = 1;
 
@@ -49,24 +48,23 @@ public class YourService extends KiboRpcService {
     };
     final float[][] qua = {{0f, 0f, 0.707f, -0.707f},//Astronaut
             {0.f, 0.0f, -0.707f, 0.707f},//Area 1 Quaternion
-            { -0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
+            {-0.5f, 0.5f, 0.5f, 0.5f},//Area 2 Quaternion
             {-0.5f, 0.5f, 0.5f, 0.5f},//Area 3 Quaternion
             {0f, 0.707f, 0.707f, 0f},//Area 4 Quaternion
             {-0.5f, 0.5f, 0.5f, 0.5f} //Bridge 1 -> 2
     };
 
-    private HashMap<Integer, String> Names    = new HashMap<Integer, String>()
-    {{
-        put(1,"beaker");
-        put(2,"goggle");
-        put(3,"hammer");
-        put(4,"kapton_tape");
-        put(5,"pipette");
-        put(6,"screwdriver");
-        put(7,"thermometer");
-        put(8,"top");
-        put(9,"watch");
-        put(10,"wrench");
+    private HashMap<Integer, String> Names = new HashMap<Integer, String>() {{
+        put(1, "beaker");
+        put(2, "goggle");
+        put(3, "hammer");
+        put(4, "kapton_tape");
+        put(5, "pipette");
+        put(6, "screwdriver");
+        put(7, "thermometer");
+        put(8, "top");
+        put(9, "watch");
+        put(10, "wrench");
     }};
 
     @Override
@@ -88,8 +86,8 @@ public class YourService extends KiboRpcService {
 
         api.reportRoundingCompletion();
 
-api.reportRoundingCompletion();
-api.notifyRecognitionItem();
+        api.reportRoundingCompletion();
+        api.notifyRecognitionItem();
 
     }
 
@@ -148,7 +146,7 @@ api.notifyRecognitionItem();
         return Convert;
     }
 
-    private Mat getCroppedImage()  {
+    private Mat getCroppedImage() {
         //Setup CAM
         Mat CamMatrix = new Mat(3, 3, CvType.CV_64F);
         Mat DistCoeffs = new Mat(1, 5, CvType.CV_64F);
@@ -160,26 +158,26 @@ api.notifyRecognitionItem();
 
         //Setup for crop
         float ARTagLength = 0.5f; //Metre
-        Mat     IDs             = new Mat(),
-                rvec            = new Mat(),
-                tvec            = new Mat(),
-                undistorted     = new Mat();
+        Mat IDs = new Mat(),
+                rvec = new Mat(),
+                tvec = new Mat(),
+                undistorted = new Mat();
         List<Mat> corners = new ArrayList<>();  //Store corner of ARTAg
         Dictionary dict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);    //ARTAg is 5*5 pixel
 
         //Get an image
         api.flashlightControlFront(0.05f);
-        Mat image = api. getMatNavCam();
+        Mat image = api.getMatNavCam();
         api.flashlightControlFront(0.0f);
         //Save original to compare with cropped image
-        api.saveMatImage(image,"Original_Image" + num + ".png");
+        api.saveMatImage(image, "Original_Image" + num + ".png");
 
         //Undistorted image
         Calib3d.undistort(image, undistorted, CamMatrix, DistCoeffs);
-        api.saveMatImage(undistorted,"Undistorted_Image" + num + ".png");
+        api.saveMatImage(undistorted, "Undistorted_Image" + num + ".png");
 
         //Detect ARTag
-        Aruco.detectMarkers(image, dict ,corners, IDs);
+        Aruco.detectMarkers(image, dict, corners, IDs);
         Log.i(TAG, "Finding ARTag...");
 
 
@@ -187,48 +185,45 @@ api.notifyRecognitionItem();
         Mat mat_corner = corners.get(0);
         double minX = Double.MAX_VALUE;
         double minY = Double.MAX_VALUE;
-        for (int i = 0; i < mat_corner.rows(); i++)
-        {
+        for (int i = 0; i < mat_corner.rows(); i++) {
             double[] c = mat_corner.get(i, 0);
             minX = Math.min(minX, c[0]);
             minY = Math.min(minY, c[1]);
         }
         int x = (int) Math.max(0, minX - 170);
         int y = (int) Math.max(0, minY - 195);
-        Rect map = new Rect(x, y, Math.min(512, 1228 - x), Math.min(512,800-y));
+        Rect map = new Rect(x, y, Math.min(512, 1228 - x), Math.min(512, 800 - y));
         Mat cropped_image = new Mat(undistorted, map);
         api.saveMatImage(cropped_image, "Cropped_image_" + num + ".png");
-
 
 
         return cropped_image;
     }
 
-    private void getAreaInfo()  {
+    private void getAreaInfo() {
         Mat img = getCroppedImage();
         Bitmap bitmap = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(img, bitmap);
+
+        DetectionHelper detectionHelper = null;
 
         try {
             detectionHelper = new DetectionHelper(this);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        List<Detection> results = detectionHelper.detect(bitmap);
-        List<String> names = new ArrayList<>();
-        Map<String, Integer> labelCountMap = new HashMap<>();
 
-        for (Detection result : results){
-            Log.i("ObjectDetection", "Detected object: " + result.getCategories().get(0).getLabel());
-            String label = result.getCategories().get(0).getLabel();
-            labelCountMap.put(label, labelCountMap.getOrDefault(label, 0) + 1);
-            names.add(result.getCategories().get(0).getLabel());
+        Map<String, Float> results = detectionHelper.detectObjects(bitmap);
+        detectionHelper.close();
+
+        for (Map.Entry<String, Float> entry : results.entrySet()) {
+            String name = entry.getKey();
+
+            api.setAreaInfo(num, name, 1);
+
+
+            num += 1;
         }
 
-        int Amount = labelCountMap.get(names.get(0));
-
-        api.setAreaInfo(num, names.get(0), Amount);
-        num +=1;
     }
-
 }
