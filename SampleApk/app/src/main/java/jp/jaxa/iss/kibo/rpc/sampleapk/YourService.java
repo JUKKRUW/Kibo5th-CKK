@@ -22,6 +22,7 @@ import org.opencv.core.*;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +35,7 @@ import java.util.List;
 public class YourService extends KiboRpcService {
 
     final String TAG = "CKK-SWPP";
-
+    private  DetectionHelper detectionHelper;
     List<Mat> corner = new ArrayList<>();
     int num = 1;
 
@@ -72,18 +73,7 @@ public class YourService extends KiboRpcService {
         // The mission starts.
         api.startMission();
 
-        moveTo(1);
-        getAreaInfo();
 
-        moveTo(5);
-        moveTo(2);
-        getAreaInfo();
-
-        moveTo(3);
-        getAreaInfo();
-
-        moveTo(4);
-        getAreaInfo();
 
 api.reportRoundingCompletion();
 api.notifyRecognitionItem();
@@ -201,14 +191,19 @@ api.notifyRecognitionItem();
         return cropped_image;
     }
 
-    private void getAreaInfo(){
+    private void getAreaInfo() throws IOException {
         Mat img = getCroppedImage();
         Bitmap bitmap = null;
         Utils.matToBitmap(img, bitmap);
-        DetectionHelper detect = new DetectionHelper();
-        String name = detect.NameOfDetection(img).get(0);
-        api.setAreaInfo(num,name,1);
-        num +=1;
+        detectionHelper = new DetectionHelper(this);
+        List<Detection> results = detectionHelper.detect(bitmap);
+        List<String> names = new ArrayList<>();
+
+        for (Detection result : results){
+            Log.i("ObjectDetection", "Detected object: " + result.getCategories().get(0).getLabel());
+            names.add(result.getCategories().get(0).getLabel());
+        }
+        
     }
 
 }

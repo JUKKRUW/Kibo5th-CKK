@@ -6,6 +6,9 @@ import android.util.Log;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
@@ -19,45 +22,34 @@ import java.util.Map;
 
 public class DetectionHelper {
 
+    private Interpreter tflite;
+    private List<String> labels;
     private ObjectDetector objectDetector;
 
-    public DetectionHelper()
 
-    {
+    public DetectionHelper(Context context) throws IOException {
+
+        tflite = new Interpreter(FileUtil.loadMappedFile(context, "detect.tflite"));
+        labels = FileUtil.loadLabels(context, "labelmap.txt");
         ObjectDetectorOptions options = ObjectDetectorOptions.builder()
                 .setMaxResults(10) // Maximum number of detected objects
                 .setScoreThreshold(0.6f)
                 .build();
-        try {
-            Context context = null;
-            objectDetector = ObjectDetector.createFromFileAndOptions(
-                    context,
-                    "detect.tflite",
-                    options);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        objectDetector = ObjectDetector.createFromFileAndOptions(context, "detect.tflite", options);
 
     }
 
-    public List<Detection> detectObjects(Mat InputImage) {
-        Bitmap bitmap = null;
-        Utils.matToBitmap(InputImage, bitmap);
-        return objectDetector.detect(TensorImage.fromBitmap(bitmap));
+    public List<Detection> detect(Bitmap bitmap) {
+        // Convert bitmap to TensorImage
+        TensorImage tensorImage = new TensorImage(DataType.UINT8);
+        tensorImage.load(bitmap);
+
+        // Run object detection on the input image
+        return objectDetector.detect(tensorImage);
     }
 
-    public List<String> NameOfDetection(Mat InputImage){
-
-        Map<String, Integer> detectionCounts = new HashMap<>();
-        List<String> AllNames = new ArrayList<>();
-        List<Detection> results = detectObjects(InputImage);
-        for (Detection detection : results){
-            String detectedclass = detection.getCategories().get(0).getLabel();
-            AllNames.add(detectedclass);
-        }
-
-        return AllNames;
-
+    public List<String> getLabels() {
+        return labels;
     }
 
 }
