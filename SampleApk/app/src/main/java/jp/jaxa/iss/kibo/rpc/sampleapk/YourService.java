@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -198,12 +199,19 @@ api.notifyRecognitionItem();
         detectionHelper = new DetectionHelper(this);
         List<Detection> results = detectionHelper.detect(bitmap);
         List<String> names = new ArrayList<>();
+        Map<String, Integer> labelCountMap = new HashMap<>();
 
         for (Detection result : results){
             Log.i("ObjectDetection", "Detected object: " + result.getCategories().get(0).getLabel());
+            String label = result.getCategories().get(0).getLabel();
+            labelCountMap.put(label, labelCountMap.getOrDefault(label, 0) + 1);
             names.add(result.getCategories().get(0).getLabel());
         }
-        
+
+        int Amount = labelCountMap.get(names.get(0));
+
+        api.setAreaInfo(num, names.get(0), Amount);
+        num +=1;
     }
 
 }
