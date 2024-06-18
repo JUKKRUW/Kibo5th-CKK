@@ -73,8 +73,20 @@ public class YourService extends KiboRpcService {
     protected void runPlan1() {
         // The mission starts.
         api.startMission();
+        moveTo(1);
+        getAreaInfo();
 
+        moveTo(5);
+        moveTo(2);
+        getAreaInfo();
 
+        moveTo(3);
+        getAreaInfo();
+
+        moveTo(4);
+        getAreaInfo();
+
+        api.reportRoundingCompletion();
 
 api.reportRoundingCompletion();
 api.notifyRecognitionItem();
@@ -192,11 +204,16 @@ api.notifyRecognitionItem();
         return cropped_image;
     }
 
-    private void getAreaInfo() throws IOException {
+    private void getAreaInfo()  {
         Mat img = getCroppedImage();
-        Bitmap bitmap = null;
+        Bitmap bitmap = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(img, bitmap);
-        detectionHelper = new DetectionHelper(this);
+
+        try {
+            detectionHelper = new DetectionHelper(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         List<Detection> results = detectionHelper.detect(bitmap);
         List<String> names = new ArrayList<>();
         Map<String, Integer> labelCountMap = new HashMap<>();
