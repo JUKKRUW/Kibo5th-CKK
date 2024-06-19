@@ -15,6 +15,7 @@ import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+import org.tensorflow.lite.task.core.BaseOptions;
 import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOptions;
@@ -35,14 +36,23 @@ public class DetectionHelper {
     private int[] outputShape;
     private DataType outputDataType;
 
-    public DetectionHelper(Context context) throws IOException {
+    public DetectionHelper(Context context) {
         // Initialize TFLite interpreter
-        MappedByteBuffer tfliteModel = FileUtil.loadMappedFile(context, "detect.tflite");
+        MappedByteBuffer tfliteModel = null;
+        try {
+            tfliteModel = FileUtil.loadMappedFile(context, "detect.tflite");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         Interpreter.Options tfliteOptions = new Interpreter.Options();
         tflite = new Interpreter(tfliteModel, tfliteOptions);
 
         // Load labels
-        labels = FileUtil.loadLabels(context, "labelmap.txt");
+        try {
+            labels = FileUtil.loadLabels(context, "labelmap.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // Get input and output tensor details
         inputShape = tflite.getInputTensor(0).shape();
@@ -51,13 +61,13 @@ public class DetectionHelper {
         outputDataType = tflite.getOutputTensor(0).dataType();
     }
 
-    public Map<String, Float> detectObjects(Bitmap bitmap) {
+    public Map<String, Integer> detectObjects(Bitmap bitmap) {
         // Load image
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 320, 320, true);
+
         TensorImage inputImage = new TensorImage(inputDataType);
 
         // Load the bitmap into TensorImage
-        inputImage.load(resizedBitmap);
+        inputImage.load(bitmap);
 
         // Image normalization (assuming model requires [0, 1] normalization)
         ImageProcessor imageProcessor = new ImageProcessor.Builder()
@@ -71,12 +81,18 @@ public class DetectionHelper {
         // Run inference
         tflite.run(inputImage.getBuffer(), outputBuffer.getBuffer().rewind());
 
-        // Post-processing: Get labels and confidence scores
-        TensorLabel tensorLabel = new TensorLabel(labels, outputBuffer);
-        Map<String, Float> floatMap = tensorLabel.getMapWithFloatValue();
-
-        return floatMap;
-
+        // Parse output and map to labels and counts
+        Map<String, Integer> detectionResults = new HashMap<>();
+        float[] outputArray = outputBuffer.getFloatArray();
+        for (int i = 0; i < outputArray.length; i += 4) {
+            int classId = (int) outputArray[i];
+            float score = outputArray[i + 1];
+            if (score > 0.2) { // Filter out low-confidence detections
+                String label = labels.get(classId);
+                detectionResults.put(label, detectionResults.getOrDefault(label, 0) + 1);
+            }
+        }
+        return detectionResults;
     }
 
     // Utility function to close interpreter

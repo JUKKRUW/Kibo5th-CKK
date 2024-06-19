@@ -1,6 +1,7 @@
 package jp.jaxa.iss.kibo.rpc.sampleapk;
 
 import android.graphics.Bitmap;
+import android.graphics.RectF;
 import android.util.Log;
 
 import gov.nasa.arc.astrobee.Result;
@@ -38,6 +39,7 @@ public class YourService extends KiboRpcService {
     final String TAG = "CKK-SWPP";
     List<Mat> corner = new ArrayList<>();
     int num = 1;
+    DetectionHelper detectionHelper;
 
     final double[][] Coordinate = {{11.143, -6.337, 4.964},//astronaut
             {10.905, -9.806, 5.195}, //Area 1 Coordinate
@@ -54,18 +56,18 @@ public class YourService extends KiboRpcService {
             {-0.5f, 0.5f, 0.5f, 0.5f} //Bridge 1 -> 2
     };
 
-    private HashMap<Integer, String> Names = new HashMap<Integer, String>() {{
-        put(1, "beaker");
-        put(2, "goggle");
-        put(3, "hammer");
-        put(4, "kapton_tape");
-        put(5, "pipette");
-        put(6, "screwdriver");
-        put(7, "thermometer");
-        put(8, "top");
-        put(9, "watch");
-        put(10, "wrench");
-    }};
+//    private HashMap<Integer, String> Names = new HashMap<Integer, String>() {{
+//        put(1, "beaker");
+//        put(2, "goggle");
+//        put(3, "hammer");
+//        put(4, "kapton_tape");
+//        put(5, "pipette");
+//        put(6, "screwdriver");
+//        put(7, "thermometer");
+//        put(8, "top");
+//        put(9, "watch");
+//        put(10, "wrench");
+//    }};
 
     @Override
     protected void runPlan1() {
@@ -84,7 +86,6 @@ public class YourService extends KiboRpcService {
         moveTo(4);
         getAreaInfo();
 
-        api.reportRoundingCompletion();
 
         api.reportRoundingCompletion();
         api.notifyRecognitionItem();
@@ -193,7 +194,7 @@ public class YourService extends KiboRpcService {
         int x = (int) Math.max(0, minX - 170);
         int y = (int) Math.max(0, minY - 195);
         Rect map = new Rect(x, y, Math.min(512, 1228 - x), Math.min(512, 800 - y));
-        Mat cropped_image = new Mat(undistorted, map);
+        Mat cropped_image = new Mat(image, map);
         api.saveMatImage(cropped_image, "Cropped_image_" + num + ".png");
 
 
@@ -204,26 +205,25 @@ public class YourService extends KiboRpcService {
         Mat img = getCroppedImage();
         Bitmap bitmap = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(img, bitmap);
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 320, 320, true);
+        api.saveBitmapImage(resizedBitmap, "Bitmap_Image" + num + ".png");
 
-        DetectionHelper detectionHelper = null;
-
-        try {
-            detectionHelper = new DetectionHelper(this);
-        } catch (IOException e) {
-            e.printStackTrace();
+        detectionHelper = new DetectionHelper(this);
+        Map<String, Integer> results  = detectionHelper.detectObjects(resizedBitmap);
+        List<String> names = new ArrayList<>();
+        int itemCount = 1;
+        if(!results.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : results.entrySet()) {
+                names.add(entry.getKey());
+                itemCount = entry.getValue();
+                Log.i(TAG, "Objecting detection : " + entry.getKey() + "with amount : " + entry.getValue());
+            }
+        }else {
+            Log.i(TAG, "Can't detected anything");
         }
-
-        Map<String, Float> results = detectionHelper.detectObjects(bitmap);
-        detectionHelper.close();
-
-        for (Map.Entry<String, Float> entry : results.entrySet()) {
-            String name = entry.getKey();
-
-            api.setAreaInfo(num, name, 1);
-
-
-            num += 1;
+        if(!names.isEmpty()){
+            api.setAreaInfo(num, names.get(0), itemCount);
         }
-
+        num +=1;
     }
 }
